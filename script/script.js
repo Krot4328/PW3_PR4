@@ -1,4 +1,20 @@
-document.addEventListener('DOMContentLoaded', function(){ 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getDatabase, ref, get, push } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAYq3w_bknQx7_i47PIfeYhNfZSndTyBpU",
+    authDomain: "my-first-firebase-projec-ede28.firebaseapp.com",
+    projectId: "my-first-firebase-projec-ede28",
+    storageBucket: "my-first-firebase-projec-ede28.firebasestorage.app",
+    messagingSenderId: "863482782924",
+    appId: "1:863482782924:web:6ff83dc884fd1068bcce69",
+    databaseURL: "https://my-first-firebase-projec-ede28-default-rtdb.europe-west1.firebasedatabase.app"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+document.addEventListener('DOMContentLoaded', function() {
     const btnOpenModal = document.querySelector('#btnOpenModal');
     const modalBlock = document.querySelector('#modalBlock');
     const closeModal = document.querySelector('#closeModal');
@@ -8,6 +24,9 @@ document.addEventListener('DOMContentLoaded', function(){
     const prevButton = document.querySelector('#prev');
     const sendButton = document.querySelector('#send');
 
+    let questions = [];
+
+    // Блок подяки користувачеві
     const thankYouModal = document.createElement('div');
     thankYouModal.id = 'thankYouModal';
     thankYouModal.classList.add('modal');
@@ -23,48 +42,20 @@ document.addEventListener('DOMContentLoaded', function(){
     thankYouModal.style.display = 'none';
     document.body.appendChild(thankYouModal);
 
-    const questions = [
-        {
-            question: "Якого кольору бургер?",
-            answers: [
-                { title: 'Стандарт', url: './image/burger.png' },
-                { title: 'Чорний', url: './image/burgerBlack.png' }
-            ],
-            type: 'radio'
-        },
-        {
-            question: "З якого м'яса котлета?",
-            answers: [
-                { title: 'Курка', url: './image/chickenMeat.png' },
-                { title: 'Яловичина', url: './image/beefMeat.png' },
-                { title: 'Свинина', url: './image/porkMeat.png' }
-            ],
-            type: 'radio'
-        },
-        {
-            question: "Додаткові інгредієнти?",
-            answers: [
-                { title: 'Помідор', url: './image/tomato.png' },
-                { title: 'Огірок', url: './image/cucumber.png' },
-                { title: 'Салат', url: './image/salad.png' },
-                { title: 'Цибуля', url: './image/onion.png' }
-            ],
-            type: 'checkbox'
-        },
-        {
-            question: "Додати соус?",
-            answers: [
-                { title: 'Часниковий', url: './image/sauce1.png' },
-                { title: 'Томатний', url: './image/sauce2.png' },
-                { title: 'Гірчичний', url: './image/sauce3.png' }
-            ],
-            type: 'radio'
+    const fetchQuestions = async () => {
+        const questionsRef = ref(db, 'questions');
+        const snapshot = await get(questionsRef);
+        if (snapshot.exists()) {
+            questions = snapshot.val();
+            openTest();
+        } else {
+            console.log("No questions found in the database.");
         }
-    ];
+    };
 
     btnOpenModal.addEventListener('click', () => {
         modalBlock.classList.add('d-block');
-        openTest();
+        fetchQuestions();
     });
 
     closeModal.addEventListener('click', () => {
@@ -82,26 +73,26 @@ document.addEventListener('DOMContentLoaded', function(){
                     nextButton.style.display = 'block';
                     sendButton.classList.add('d-none');
                     break;
-        
+
                 case numberQuestion > 0 && numberQuestion < questions.length:
                     prevButton.style.display = 'block';
                     nextButton.style.display = 'block';
                     sendButton.classList.add('d-none');
                     break;
-        
+
                 case numberQuestion === questions.length:
                     prevButton.style.display = 'none';
                     nextButton.style.display = 'none';
                     sendButton.classList.remove('d-none');
                     break;
-        
+
                 default:
                     prevButton.style.display = 'block';
                     nextButton.style.display = 'block';
                     sendButton.classList.add('d-none');
                     break;
             }
-        };        
+        };
 
         const renderAnswers = (index) => {
             formAnswers.innerHTML = '';
@@ -120,13 +111,6 @@ document.addEventListener('DOMContentLoaded', function(){
             });
         };
 
-        const renderQuestions = (indexQuestion) => {
-            formAnswers.innerHTML = '';
-            questionTitle.textContent = questions[indexQuestion].question;
-            renderAnswers(indexQuestion);
-            updateButtonsVisibility();
-        };
-
         const showThankYouMessage = () => {
             formAnswers.innerHTML = '';
             questionTitle.innerHTML = `
@@ -139,6 +123,13 @@ document.addEventListener('DOMContentLoaded', function(){
                     <input type="tel" class="form-control" id="numberPhone">
                 </div>
             `;
+            updateButtonsVisibility();
+        };
+
+        const renderQuestions = (indexQuestion) => {
+            formAnswers.innerHTML = '';
+            questionTitle.textContent = questions[indexQuestion].question;
+            renderAnswers(indexQuestion);
             updateButtonsVisibility();
         };
 
@@ -182,7 +173,16 @@ document.addEventListener('DOMContentLoaded', function(){
                     "Номер телефону": phoneInput.value
                 });
             }
-            console.log("Відповіді відправлено:", finalAnswers);
+
+            const contactsRef = ref(db, 'contacts');
+            push(contactsRef, finalAnswers)
+                .then(() => {
+                    console.log("Відповіді збережено!");
+                    finalAnswers.length = 0;
+                })
+                .catch((error) => {
+                    console.error("Помилка при збереженні відповідей:", error);
+                });
 
             modalBlock.classList.remove('d-block');
             thankYouModal.style.display = 'block';
